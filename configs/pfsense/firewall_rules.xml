@@ -1,0 +1,257 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+  pfSense Firewall Rules Configuration
+  IT-SOC Home Lab Environment
+  
+  This XML file contains the firewall rules configuration for the pfSense firewall
+  deployed in the lab environment. It implements the security controls described in
+  the network security foundation documentation.
+-->
+<pfsense>
+  <system>
+    <hostname>pfsense</hostname>
+    <domain>lab.local</domain>
+  </system>
+
+  <interfaces>
+    <!-- WAN Interface Configuration -->
+    <wan>
+      <enable>1</enable>
+      <if>em0</if>
+      <ipaddr>203.0.113.15</ipaddr>
+      <subnet>24</subnet>
+      <gateway>203.0.113.1</gateway>
+      <descr>External Interface</descr>
+    </wan>
+    
+    <!-- LAN Interface Configuration (SOC Network) -->
+    <lan>
+      <enable>1</enable>
+      <if>em1</if>
+      <ipaddr>10.1.10.1</ipaddr>
+      <subnet>24</subnet>
+      <descr>SOC/IT Network</descr>
+    </lan>
+    
+    <!-- OPT1 Interface Configuration (DMZ) -->
+    <opt1>
+      <enable>1</enable>
+      <if>em2</if>
+      <ipaddr>172.16.30.1</ipaddr>
+      <subnet>24</subnet>
+      <descr>DMZ Network</descr>
+    </opt1>
+    
+    <!-- OPT2 Interface Configuration (Malware Analysis) -->
+    <opt2>
+      <enable>1</enable>
+      <if>em3</if>
+      <ipaddr>10.2.20.1</ipaddr>
+      <subnet>24</subnet>
+      <descr>Malware Analysis Network</descr>
+    </opt2>
+  </interfaces>
+
+  <!-- NAT Configuration -->
+  <nat>
+    <outbound>
+      <mode>advanced</mode>
+      <rule>
+        <source>
+          <network>10.1.10.0/24</network>
+        </source>
+        <destination>
+          <any>1</any>
+        </destination>
+        <target>203.0.113.15</target>
+        <descr>SOC Network NAT</descr>
+      </rule>
+      <!-- No NAT for Malware Analysis Network - completely isolated -->
+    </outbound>
+  </nat>
+
+  <!-- Filter Rules -->
+  <filter>
+    <!-- Default Block Rules -->
+    <rule>
+      <type>block</type>
+      <interface>wan</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <any>1</any>
+      </source>
+      <destination>
+        <network>lan</network>
+      </destination>
+      <descr>Default deny Internet to SOC Network</descr>
+    </rule>
+    
+    <rule>
+      <type>block</type>
+      <interface>wan</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <any>1</any>
+      </source>
+      <destination>
+        <network>opt1</network>
+      </destination>
+      <descr>Default deny Internet to DMZ</descr>
+    </rule>
+    
+    <rule>
+      <type>block</type>
+      <interface>wan</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <any>1</any>
+      </source>
+      <destination>
+        <network>opt2</network>
+      </destination>
+      <descr>Default deny Internet to Malware Analysis Network</descr>
+    </rule>
+    
+    <!-- SOC Network to Internet Rules -->
+    <rule>
+      <type>pass</type>
+      <interface>lan</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>10.1.10.0/24</network>
+      </source>
+      <destination>
+        <any>1</any>
+      </destination>
+      <descr>Allow SOC Network to Internet</descr>
+    </rule>
+    
+    <!-- SOC Network to Malware Analysis Network (Restricted) -->
+    <rule>
+      <type>pass</type>
+      <interface>lan</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>10.1.10.0/24</network>
+      </source>
+      <destination>
+        <network>10.2.20.0/24</network>
+      </destination>
+      <protocol>tcp</protocol>
+      <destination-port>22,445</destination-port>
+      <descr>Allow SOC to Malware Analysis (SSH, SMB only)</descr>
+    </rule>
+    
+    <!-- Block Malware Analysis Network to Internet -->
+    <rule>
+      <type>block</type>
+      <interface>opt2</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>10.2.20.0/24</network>
+      </source>
+      <destination>
+        <any>1</any>
+      </destination>
+      <descr>Block Malware Analysis Network to Internet</descr>
+    </rule>
+    
+    <!-- Block Malware Analysis Network to SOC Network -->
+    <rule>
+      <type>block</type>
+      <interface>opt2</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>10.2.20.0/24</network>
+      </source>
+      <destination>
+        <network>10.1.10.0/24</network>
+      </destination>
+      <descr>Block Malware Analysis to SOC (prevent lateral movement)</descr>
+    </rule>
+    
+    <!-- Block DMZ to SOC Network -->
+    <rule>
+      <type>block</type>
+      <interface>opt1</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>172.16.30.0/24</network>
+      </source>
+      <destination>
+        <network>10.1.10.0/24</network>
+      </destination>
+      <descr>Block DMZ to SOC Network (prevent compromise)</descr>
+    </rule>
+    
+    <!-- Allow internal Malware Analysis Network communication -->
+    <rule>
+      <type>pass</type>
+      <interface>opt2</interface>
+      <ipprotocol>inet</ipprotocol>
+      <source>
+        <network>10.2.20.0/24</network>
+      </source>
+      <destination>
+        <network>10.2.20.0/24</network>
+      </destination>
+      <descr>Allow internal Malware Analysis Network communication</descr>
+    </rule>
+  </filter>
+
+  <!-- Advanced Security Features -->
+  <snort>
+    <enable>1</enable>
+    <interfaces>
+      <wan>
+        <enable>1</enable>
+        <descr>WAN IDS/IPS</descr>
+        <rulesets>
+          <emergingthreats>1</emergingthreats>
+          <customrules>1</customrules>
+        </rulesets>
+      </wan>
+      <lan>
+        <enable>1</enable>
+        <descr>LAN IDS/IPS</descr>
+        <rulesets>
+          <emergingthreats>1</emergingthreats>
+          <customrules>1</customrules>
+        </rulesets>
+      </lan>
+    </interfaces>
+  </snort>
+  
+  <!-- DNS Filtering Configuration -->
+  <dnsbl>
+    <enable>1</enable>
+    <type>pfblockerng</type>
+    <categories>
+      <malware>1</malware>
+      <phishing>1</phishing>
+      <command_control>1</command_control>
+    </categories>
+  </dnsbl>
+  
+  <!-- VPN Access for Remote Management -->
+  <openvpn>
+    <server>
+      <enable>1</enable>
+      <protocol>UDP</protocol>
+      <port>1194</port>
+      <crypto>AES-256-GCM</crypto>
+      <digest>SHA384</digest>
+      <tunnel_network>10.8.0.0/24</tunnel_network>
+      <local_network>10.1.10.0/24</local_network>
+      <description>Management VPN</description>
+    </server>
+  </openvpn>
+  
+  <!-- NetFlow Monitoring for Security Onion -->
+  <netflow>
+    <enable>1</enable>
+    <collector>10.1.10.10</collector>
+    <port>2055</port>
+    <interfaces>wan,lan,opt1,opt2</interfaces>
+  </netflow>
+</pfsense>

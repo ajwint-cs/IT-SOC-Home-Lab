@@ -1,0 +1,92 @@
+%YAML 1.1
+---
+# Suricata Custom Rules Configuration for IT-SOC Home Lab
+# This configuration contains custom rules and settings for the Suricata IDS/IPS
+# running on Security Onion in the lab environment.
+
+# Global Suricata settings
+vars:
+  # Home network definition
+  address-groups:
+    HOME_NET: "[10.1.10.0/24,172.16.30.0/24,10.2.20.0/24]"
+    EXTERNAL_NET: "!$HOME_NET"
+
+  # HTTP servers
+  port-groups:
+    HTTP_PORTS: "80,8080"
+    HTTPS_PORTS: "443,8443"
+    DNS_PORTS: "53"
+    WINDOWS_RPC: "135,593"
+    SSH_PORTS: "22"
+    SQL_PORTS: "1433,3306,5432"
+
+# Rule configuration
+rule-files:
+  # Standard rule sets
+  - rules/suricata.rules
+  - rules/emerging-attack_response.rules
+  - rules/emerging-trojan.rules
+  - rules/emerging-user_agents.rules
+  - rules/emerging-exploit.rules
+  - rules/emerging-malware.rules
+
+  # Custom lab-specific rules
+  - rules/lab-custom.rules
+
+# Custom rule examples for lab-custom.rules:
+#
+# # Alert on traffic from Malware Analysis to SOC network (should be blocked by firewall)
+# alert ip $MALWARE_NET any -> $SOC_NET any (msg:"POLICY Malware Analysis Network to SOC Network"; sid:1000001; rev:1;)
+#
+# # Alert on suspicious PowerShell commands
+# alert tcp $HOME_NET any -> $HOME_NET any (msg:"POLICY Suspicious PowerShell Encoded Command"; flow:established,to_server; content:"powershell"; nocase; content:"-enc"; nocase; distance:0; sid:1000002; rev:1;)
+#
+# # Alert on suspicious executable downloads
+# alert http $HOME_NET any -> $EXTERNAL_NET any (msg:"MALWARE Suspicious Executable Download"; flow:established,to_client; content:"application/x-dosexec"; http_header; sid:1000003; rev:1;)
+
+# Suricata engine settings
+engine-analysis:
+  rules-fast-pattern: yes
+  rules-analyzer: yes
+
+# Detection engine settings
+detect-engine:
+  - profile: medium
+  - custom-values:
+      toclient-src-groups: 4
+      toclient-dst-groups: 4
+      toclient-sp-groups: 2
+      toclient-dp-groups: 3
+      toserver-src-groups: 4
+      toserver-dst-groups: 4
+      toserver-sp-groups: 2
+      toserver-dp-groups: 3
+  - sgh-mpm-context: auto
+  - inspection-recursion-limit: 3000
+
+# Logging configuration
+outputs:
+  # EVE JSON output
+  - eve-log:
+      enabled: yes
+      filetype: regular
+      filename: eve.json
+      types:
+        - alert
+        - http
+        - dns
+        - tls
+        - files
+        - ssh
+        - flow
+
+# Performance tuning
+threading:
+  set-cpu-affinity: yes
+  detect-thread-ratio: 1.5
+# IPS mode (not used in lab - Security Onion is configured in IDS mode)
+# action-order:
+#   - pass
+#   - drop
+#   - reject
+#   - alert
