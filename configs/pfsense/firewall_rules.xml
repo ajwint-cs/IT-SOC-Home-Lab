@@ -6,6 +6,10 @@
   This XML file contains the firewall rules configuration for the pfSense firewall
   deployed in the lab environment. It implements the security controls described in
   the network security foundation documentation.
+  
+  NOTE: The Malware Analysis Network is completely isolated and air-gapped from
+  the internet in the actual implementation. Some references to it remain in this
+  configuration file for documentation purposes only.
 -->
 <pfsense>
   <system>
@@ -41,15 +45,6 @@
       <subnet>24</subnet>
       <descr>DMZ Network</descr>
     </opt1>
-    
-    <!-- OPT2 Interface Configuration (Malware Analysis) -->
-    <opt2>
-      <enable>1</enable>
-      <if>em3</if>
-      <ipaddr>10.2.20.1</ipaddr>
-      <subnet>24</subnet>
-      <descr>Malware Analysis Network</descr>
-    </opt2>
   </interfaces>
 
   <!-- NAT Configuration -->
@@ -66,7 +61,6 @@
         <target>203.0.113.15</target>
         <descr>SOC Network NAT</descr>
       </rule>
-      <!-- No NAT for Malware Analysis Network - completely isolated -->
     </outbound>
   </nat>
 
@@ -99,19 +93,6 @@
       <descr>Default deny Internet to DMZ</descr>
     </rule>
     
-    <rule>
-      <type>block</type>
-      <interface>wan</interface>
-      <ipprotocol>inet</ipprotocol>
-      <source>
-        <any>1</any>
-      </source>
-      <destination>
-        <network>opt2</network>
-      </destination>
-      <descr>Default deny Internet to Malware Analysis Network</descr>
-    </rule>
-    
     <!-- SOC Network to Internet Rules -->
     <rule>
       <type>pass</type>
@@ -126,50 +107,6 @@
       <descr>Allow SOC Network to Internet</descr>
     </rule>
     
-    <!-- SOC Network to Malware Analysis Network (Restricted) -->
-    <rule>
-      <type>pass</type>
-      <interface>lan</interface>
-      <ipprotocol>inet</ipprotocol>
-      <source>
-        <network>10.1.10.0/24</network>
-      </source>
-      <destination>
-        <network>10.2.20.0/24</network>
-      </destination>
-      <protocol>tcp</protocol>
-      <destination-port>22,445</destination-port>
-      <descr>Allow SOC to Malware Analysis (SSH, SMB only)</descr>
-    </rule>
-    
-    <!-- Block Malware Analysis Network to Internet -->
-    <rule>
-      <type>block</type>
-      <interface>opt2</interface>
-      <ipprotocol>inet</ipprotocol>
-      <source>
-        <network>10.2.20.0/24</network>
-      </source>
-      <destination>
-        <any>1</any>
-      </destination>
-      <descr>Block Malware Analysis Network to Internet</descr>
-    </rule>
-    
-    <!-- Block Malware Analysis Network to SOC Network -->
-    <rule>
-      <type>block</type>
-      <interface>opt2</interface>
-      <ipprotocol>inet</ipprotocol>
-      <source>
-        <network>10.2.20.0/24</network>
-      </source>
-      <destination>
-        <network>10.1.10.0/24</network>
-      </destination>
-      <descr>Block Malware Analysis to SOC (prevent lateral movement)</descr>
-    </rule>
-    
     <!-- Block DMZ to SOC Network -->
     <rule>
       <type>block</type>
@@ -182,20 +119,6 @@
         <network>10.1.10.0/24</network>
       </destination>
       <descr>Block DMZ to SOC Network (prevent compromise)</descr>
-    </rule>
-    
-    <!-- Allow internal Malware Analysis Network communication -->
-    <rule>
-      <type>pass</type>
-      <interface>opt2</interface>
-      <ipprotocol>inet</ipprotocol>
-      <source>
-        <network>10.2.20.0/24</network>
-      </source>
-      <destination>
-        <network>10.2.20.0/24</network>
-      </destination>
-      <descr>Allow internal Malware Analysis Network communication</descr>
     </rule>
   </filter>
 
@@ -252,6 +175,6 @@
     <enable>1</enable>
     <collector>10.1.10.10</collector>
     <port>2055</port>
-    <interfaces>wan,lan,opt1,opt2</interfaces>
+    <interfaces>wan,lan,opt1</interfaces>
   </netflow>
 </pfsense>
