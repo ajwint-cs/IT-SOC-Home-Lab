@@ -17,31 +17,90 @@ This project documents the design, implementation, and operation of a sophistica
 
 ## Lab Architecture
 
-[External Network (Internet)]
-|
-| (WAN: 203.0.113.15/24)
-|
-[ pfSense Firewall ]
-|
-| | |
-| (LAN: 10.1.10.1/24)| (DMZ: 172.16.30.1/24)  
-| | |
-[ SOC Network ] [ DMZ Network ] [ Malware Analysis Network ]
-10.1.10.0/24 172.16.30.0/24 10.2.20.0/24
-|
-|---- Domain Controller (10.1.10.2/24)
-|---- Security Onion (10.1.10.10/24)
-|---- SOC Workstation (10.1.10.100/24)
-|---- IT Workstation (10.1.10.101/24)
-|---- SRV-PRINT-TICKET (10.1.10.20/24)
-|---- SRV-FILE-SHAREPOINT (10.1.10.21/24)
-|---- SRV-WSUS-RDP (10.1.10.22/24)
-|---- WIN10-VULN (10.1.10.102/24)
+                                 +-------------------+
+                                 |                   |
+                                 |  External Network |
+                                 |     (Internet)    |
+                                 |                   |
+                                 +--------+----------+
+                                          |
+                                          | WAN: 203.0.113.15/24
+                                          |
+                                 +--------+----------+
+                                 |                   |
+                                 |  pfSense Firewall |
+                                 |                   |
+                                 +--------+----------+
+                                          |
+        +-----------------------------+---+---+-----------------------------+
+        |                             |       |                             |
+        | LAN: 10.1.10.1/24          |       | DMZ: 172.16.30.1/24         |
+        |                             |       |                             |
 
-Air-gapped/Isolated:
-
-- REMnux (10.2.20.2/24)
-- FlareVM (10.2.20.3/24)
++-------+---------+ | | +------+------+
+| | | | | |
+| SOC/IT Network | | | | DMZ Network |
+| 10.1.10.0/24 | | | | 172.16.30.0/24
+| | | | | |
++-------+---------+ | | +-------------+
+| | |
+| | |
++-------+---------+ | | +-------------+
+| | | | | |
+| Domain Controller | | | (Reserved for
+| 10.1.10.2 | | | | future use)  
+| | | | | |
++-------+---------+ | | +-------------+
+| | |
++-------+---------+ | |
+| | | |
+| Security Onion | | |
+| 10.1.10.10 | | |
+| | | |
++-------+---------+ | |
+| | |
++-------+---------+ +-------------+ +-------------+
+| | | |
+| SOC Workstation | | Isolated |
+| 10.1.10.100 | | Malware Analysis Network |
+| | | 10.2.20.0/24 |
++-------+---------+ | |
+| +----------------+------------------+
++-------+---------+ | |
+| | +---------+-------+ +-------+--------+
+| IT Workstation | | | | |
+| 10.1.10.101 | | REMnux | | FlareVM |
+| | | 10.2.20.2 | | 10.2.20.3 |
++-------+---------+ | | | |
+| +-----------------+ +----------------+
++-------+---------+
+| |
+| WIN10-VULN |
+| 10.1.10.102 |
+| |
++-------+---------+
+|
++-------+---------+
+| |
+| SRV-PRINT-TICKET|
+| 10.1.10.20 |
+| |
++-------+---------+
+|
++-------+---------+
+| |
+| SRV-FILE- |
+| SHAREPOINT |
+| 10.1.10.21 |
+| |
++-------+---------+
+|
++-------+---------+
+| |
+| SRV-WSUS-RDP |
+| 10.1.10.22 |
+| |
++----------------+
 
 ### IP Address Mapping Table (IPs have been obfuscated for security reasons. Typically, in a home environment, LANs would be on 192.168.x.x. Documentation uses documentation addresses RFC 5737 for public-facing components)
 
