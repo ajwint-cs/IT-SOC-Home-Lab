@@ -94,5 +94,5 @@ The lab consists of the following key components:
 
 ## Contact
 
-(Linkedin)[https://www.linkedin.com/in/aj-in-cs/]
-(Cover Letter)[swe-cover-letter.vercel.app]
+[Linkedin](https://www.linkedin.com/in/aj-in-cs/)
+[Cover Letter](swe-cover-letter.vercel.app)
